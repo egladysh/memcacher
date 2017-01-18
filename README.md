@@ -13,7 +13,6 @@ C++11 and a system that support kqueue (OSX, FreeBSD) or epoll (Linux). Actually
 
 ### Steps
 * Suppose you have the source in [HOME]/work/memcacher
-
 * Create a build folder in [HOME]/work, and go there.
 
     $mkdir build
@@ -62,8 +61,9 @@ C++11 and a system that support kqueue (OSX, FreeBSD) or epoll (Linux). Actually
    - murmur3 hash, binary hasher.
 * Command line options.
 
-	memcacher [-lPORT] [-pPORT] [-tTHREADS] [-mCACHE_MEMORY_SIZE]
+	memcacher [-lIP] [-pPORT] [-tTHREADS] [-mCACHE_MEMORY_SIZE]
 	
+		-l IP address of the listening socket
 		-p Port number, default is 11211
 		-t Number of threads, default is 1 (just the main thread)
 		-m Max cache memory (MB), default is 500
