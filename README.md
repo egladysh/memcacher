@@ -1,10 +1,11 @@
 # memcacher
 
 This is a C++ implementation of the Memcache Binary Protocol, https://cloud.github.com/downloads/memcached/memcached/protocol-binary.txt
-This project has a somewhat interesting history. It started as coding exercise given to me by Slack that got me excited.
+This project has a somewhat interesting history. It was submitted as my response to a coding exercise given to me by Slack.
 The implementation uses the C++11 move semantic heavily that minimizes the number of required data copying while keeping the code clean. The RAII idiom
 helps with a clean code as well as making it exception "safer". The cache uses LRU to reclaim memory when needed.
-The performance is comparable with the standard memcached, that is implemented in C and has custom memory allocations. 
+The performance is comparable with the standard memcached, that is implemented in C and has custom memory allocations. I believe that building custom C++
+allocators would make memcacher as fast as memcached.
 
 ## Build
 
