@@ -104,7 +104,7 @@ static void server_loop(tcp::socket& s, unsigned int maxevents, unsigned int thr
 				mc::buffer buf;
 				buf.resize(sizeof(mc::sysevent));
 
-				while(true) {
+				while(true) { //read the control pipe while there are control events
 					ssize_t count = ::read(sysctl.read_end(), &buf[0], buf.size());
 					if(count == -1) {
 						if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -177,7 +177,7 @@ static void server_loop(tcp::socket& s, unsigned int maxevents, unsigned int thr
 						break;
 					}
 				}
-            }
+			}
 		}
 	}
 }

@@ -8,12 +8,6 @@
 
 namespace mc
 {
-	inline void set_fcntl(int fd, int flags)
-	{
-		int flg = ::fcntl(fd, F_GETFL);
-		::fcntl(fd, F_SETFL, flg | O_NONBLOCK);
-	}
-
 	struct pipe
 	{
 	
@@ -43,6 +37,12 @@ namespace mc
 	
 	private:
 		int fd_[0];
+
+		void set_fcntl(int fd, int flags)
+		{
+			int flg = ::fcntl(fd, F_GETFL);
+			::fcntl(fd, F_SETFL, flg | O_NONBLOCK);
+		}
 
 		pipe(const pipe&) = delete;
 		pipe& operator=(const pipe&) = delete;
