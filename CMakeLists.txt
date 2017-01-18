@@ -4,8 +4,8 @@ project(memcacher)
 
 file(GLOB src *.cpp *.hpp *.h)
 
-if( APPLE )
-	message( STATUS "***** Making OS X")
+if( UNIX )
+	message( STATUS "Making Unix")
 
 	#debug options
 	#set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -g" )
