@@ -18,7 +18,7 @@ C++11 and a system that support kqueue (OSX, FreeBSD) or epoll (Linux). Actually
 
     $mkdir build
 
-	$cd bild
+	$cd build
 
 
 * Run cmake.
