@@ -1,6 +1,6 @@
 # memcacher
 
-This is a C++ implementation of the [Memcache Binary Protocol](https://cloud.github.com/downloads/memcached/memcached/protocol-binary.txt). It is a work in progress. Set (with CAS) and Get commands are currently supported.
+memcacher a C++ implementation of [Memcache Binary Protocol](https://cloud.github.com/downloads/memcached/memcached/protocol-binary.txt). It is a work in progress. Set (with CAS) and Get commands are currently supported.
 This project has a somewhat interesting history. It was submitted as my response to a coding exercise given to me by Slack.
 The implementation uses the C++11 move semantic heavily that minimizes the number of required data copying while keeping the code clean. The RAII idiom
 helps with a clean code as well as making it exception "safer". The cache uses LRU to reclaim memory when needed.
@@ -73,9 +73,12 @@ C++11 and a system that support kqueue (OSX, FreeBSD) or epoll (Linux). Actually
 
 * The following obvious parameters can be configured in config.h
 
-	static const size_t MAX_KEYLEN = 250;
+	static const size_t MAX_KEYLEN = 250; //bytes
+
 	static const size_t MAX_VALUELEN = 1024*1024; //1Mb
-	static const size_t MAX_WRITE_SIZE = 4*1204;
+
+	static const size_t MAX_WRITE_SIZE = 4*1204; //max size of one write on connections
+
 
 ## Performance notes
 
