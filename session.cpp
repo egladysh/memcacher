@@ -162,26 +162,33 @@ bool session::handle_request_set()
 
 bool session::handle_request_get()
 {
-	buffer val;
+	typedef uint32_t flag_t;
+
+	buffer resp;
+	//reserve space for header and flags
+	resp.resize(sizeof(header_) + sizeof(flag_t));
+
+	unsigned int val_len = 0;
+
 	{ //find item
 		cache::item req(std::move(request_), header_);
-		if (!c_.get_value(val, req.get_key())) {
+		if (!c_.get_value(resp, req.get_key())) { //this will put the value at the end of 'resp'
 			error_response(PROTOCOL_BINARY_RESPONSE_KEY_ENOENT);
 			return true;
 		}
+		val_len = resp.size() - sizeof(header_) - sizeof(flag_t);
 	}
 
-	{ //write header and flags
-		uint32_t f = 0;
-		buffer resp = make_response_header(header_, 0, sizeof(f), 0, val.size() + sizeof(f));
-		resp.insert(resp.end(), (unsigned char*)&f, (unsigned char*)&f+sizeof(f));
-		if (!socket_write(resp.data(), resp.size())) {
-			return false;
-		}
+	{ //place header and flags
+		flag_t f = 0;
+		buffer hdr = make_response_header(header_, 0, sizeof(f), 0, val_len + sizeof(f));
+		hdr.reserve(sizeof(header_) + sizeof(f));
+		hdr.insert(hdr.end(), (unsigned char*)&f, (unsigned char*)&f+sizeof(f));
+		std::copy(hdr.begin(), hdr.end(), resp.begin());
 	}
 
-	// write the value
-	if (!begin_write(std::move(val))) {
+	// write the response
+	if (!begin_write(std::move(resp))) {
 		return false;
 	}
 
