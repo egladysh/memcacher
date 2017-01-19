@@ -8,10 +8,10 @@ if( APPLE )
 	message( STATUS "Making OSX")
 
 	#debug options
-	set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -g" )
+	#set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -g" )
 
 	#release options
-	#set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -O3 -DNDEBUG")
+	set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -O3 -DNDEBUG")
 
 else()
 
