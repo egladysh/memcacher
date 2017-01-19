@@ -54,7 +54,7 @@ namespace mc
 			lru::iterator lru_ref_; //location in LRU list (list iterators are valid till deleted)
 
 			explicit item(data d, const protocol_binary_request_header& h)
-				:d_(d)
+				:d_(std::move(d))
 				,h_(h)
 			{
 				assert(d.size() >= h_.request.extlen + sizeof(h_));
