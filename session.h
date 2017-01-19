@@ -31,14 +31,18 @@ namespace mc //for memcache...
 		protocol_binary_request_header header_; //packet header
 		struct write_control
 		{
-			const unsigned char* buf_;
-			size_t len_;
+			buffer buf_;
+			size_t pos_;
 			write_control()
-				:buf_(nullptr)
-				,len_(0)
+				:pos_(0)
 			{}
 			bool is_active() const {
-				return len_ != 0;
+				return pos_ < buf_.size();
+			}
+			void reset()
+			{
+				buf_.clear();
+				pos_ = 0;
 			}
 		};
 		write_control wctl_;
@@ -51,7 +55,7 @@ namespace mc //for memcache...
 
 		void error_response(protocol_binary_response_status err);
 
-		bool begin_write(const unsigned char* buf, size_t len);
+		bool begin_write(buffer buf);
 		bool continue_write();
 
 		bool socket_write(const unsigned char* buf, size_t len);

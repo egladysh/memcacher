@@ -289,7 +289,7 @@ int main(int argc, char* argv[])
 	
 	try {
 		//allocate cache
-		g_cache.reset(new mc::cache(cachemem*1024*1024));
+		g_cache.reset(new mc::cache(cachemem*1024*1024, threads > 1));
 
 		// bind a TCP socket
 		tcp::socket s(ip, port);

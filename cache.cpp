@@ -13,11 +13,14 @@ size_t cache::hasher::operator()(const key& k) const
 	return MurmurHash3_x86_32(k.d_, k.len_);
 }
 
-cache::cache(size_t maxmemsize)
+cache::cache(size_t maxmemsize, bool thread_safe)
 	:maxmemsize_(maxmemsize)
 	,used_mem_(0)
 {
 	assert(maxmemsize);
+
+	if (thread_safe)
+		m_.reset(new std::mutex);
 
 	//some initial hints for the hash
 	//assuming the average value size is 1% of the max
@@ -34,7 +37,51 @@ cache::~cache()
 {
 }
 
+bool cache::cas(item v, uint64_t cas)
+{
+	if (m_) {
+		std::unique_lock<std::mutex> lock(*m_);
+		return do_cas(std::move(v), cas);
+	}
+	else {
+		return do_cas(std::move(v), cas);
+	}
+}
+
 void cache::set(item v)
+{
+	if (m_) {
+		std::unique_lock<std::mutex> lock(*m_);
+		do_set(std::move(v));
+	}
+	else {
+		do_set(std::move(v));
+	}
+}
+
+bool cache::get_value(std::vector<unsigned char>& v, const key& k)
+{
+	if (m_) {
+		std::unique_lock<std::mutex> lock(*m_);
+		return do_get_value(v, k);
+	}
+	else {
+		return do_get_value(v, k);
+	}
+}
+
+bool cache::do_cas(item v, uint64_t cas)
+{
+	//handle cas
+	const cache::item* p = do_get(v.get_key());
+	if (p && p->h_.request.cas != cas) {
+		return false;
+	}
+	do_set(std::move(v));
+	return true;
+}
+
+void cache::do_set(item v)
 {
 	key k = v.get_key();
 	
@@ -64,7 +111,18 @@ void cache::set(item v)
 	used_mem_ += itemmem;
 }
 
-const cache::item* cache::get(const key& k)
+bool cache::do_get_value(std::vector<unsigned char>& v, const key& k)
+{
+	const item* p = do_get(k);
+	if (!p)
+		return false;
+	unsigned int value_len = p->get_data_len() - p->h_.request.keylen;
+	const unsigned char* pd = p->get_data()+p->h_.request.keylen;
+	v.insert(v.end(), pd, pd + value_len);
+	return true;
+}
+
+const cache::item* cache::do_get(const key& k)
 {
 	auto it = h_.find(k);
 	if (it == h_.end())

@@ -136,17 +136,17 @@ bool session::handle_request_set()
 {
 	cache::item item(std::move(request_), header_);
 
-	//handle cas
-	if (header_.request.cas) {
-		const cache::item* p = c_.get(item.get_key());
-		if (p && p->h_.request.cas != header_.request.cas) {
-			error_response(PROTOCOL_BINARY_RESPONSE_KEY_EEXISTS);
-			return true;
-		}
-	}
-
 	try {
-		c_.set(std::move(item));
+		if (header_.request.cas) {
+			if (!c_.cas(std::move(item), header_.request.cas)) {
+				error_response(PROTOCOL_BINARY_RESPONSE_KEY_EEXISTS);
+				return true;
+			}
+		}
+		else {
+			c_.set(std::move(item));
+		}
+
 		//generate response
 		buffer resp = make_response_header(header_, 0, 0, 0, 0);
 		if (!socket_write(resp.data(), resp.size())) {
@@ -162,20 +162,18 @@ bool session::handle_request_set()
 
 bool session::handle_request_get()
 {
-	const cache::item* p = nullptr;
+	buffer val;
 	{ //find item
 		cache::item req(std::move(request_), header_);
-		p = c_.get(req.get_key());
-		if (!p) {
+		if (!c_.get_value(val, req.get_key())) {
 			error_response(PROTOCOL_BINARY_RESPONSE_KEY_ENOENT);
 			return true;
 		}
 	}
 
-	unsigned int value_len = p->get_data_len() - p->h_.request.keylen;
 	{ //write header and flags
 		uint32_t f = 0;
-		buffer resp = make_response_header(header_, 0, sizeof(f), 0, value_len + sizeof(f));
+		buffer resp = make_response_header(header_, 0, sizeof(f), 0, val.size() + sizeof(f));
 		resp.insert(resp.end(), (unsigned char*)&f, (unsigned char*)&f+sizeof(f));
 		if (!socket_write(resp.data(), resp.size())) {
 			return false;
@@ -183,7 +181,7 @@ bool session::handle_request_get()
 	}
 
 	// write the value
-	if (!begin_write(p->get_data()+p->h_.request.keylen, value_len)) {
+	if (!begin_write(std::move(val))) {
 		return false;
 	}
 
@@ -292,10 +290,14 @@ void session::error_response(protocol_binary_response_status err)
 	reset();
 }
 
-bool session::begin_write(const unsigned char* buf, size_t len)
+bool session::begin_write(buffer buf)
 {
-	wctl_.buf_ = buf;
-	wctl_.len_ = len;
+	assert(!wctl_.is_active());
+	if (buf.empty())
+		return true;
+
+	wctl_.buf_ = std::move(buf);
+	wctl_.pos_ = 0;
 	return continue_write();
 }
 
@@ -304,16 +306,18 @@ bool session::continue_write()
 	assert(wctl_.is_active());
 
 	//write a chunk
-	size_t len = std::min(MAX_WRITE_SIZE, wctl_.len_);
+	size_t len = std::min(MAX_WRITE_SIZE, wctl_.buf_.size()-wctl_.pos_);
 	assert(len);
-	if (!socket_write(wctl_.buf_, len))
+	if (!socket_write(wctl_.buf_.data() + wctl_.pos_, len)) {
+		wctl_.reset();
 		return false;
+	}
 
 	//move pointers
-	wctl_.buf_ += len;
-	wctl_.len_ -= len;
+	wctl_.pos_ += len;
 
 	if (!wctl_.is_active()) { //done writing
+		wctl_.reset();
 		return true;
 	}
 

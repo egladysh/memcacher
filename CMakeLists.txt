@@ -4,14 +4,14 @@ project(memcacher)
 
 file(GLOB src *.cpp *.hpp *.h)
 
-if( UNIX )
-	message( STATUS "Making Unix")
+if( APPLE )
+	message( STATUS "Making OSX")
 
 	#debug options
-	#set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -g" )
+	set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -g" )
 
 	#release options
-	set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -O2 -DNDEBUG")
+	#set( CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -O3 -DNDEBUG")
 
 else()
 
@@ -19,7 +19,7 @@ else()
 	#set( CMAKE_CXX_FLAGS "-std=c++1y -g -DUSE_EPOLL" )
 
 	#release options
-	set( CMAKE_CXX_FLAGS "-std=c++1y -O2 -DNDEBUG -DUSE_EPOLL" )
+	set( CMAKE_CXX_FLAGS "-std=c++1y -O3 -DNDEBUG -DUSE_EPOLL" )
 
 	list(REMOVE_ITEM src ${CMAKE_CURRENT_SOURCE_DIR}/kqepoll.cpp)
 endif()

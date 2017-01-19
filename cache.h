@@ -7,6 +7,8 @@
 #include <list>
 #include <string.h>
 #include <functional>
+#include <mutex>
+#include <memory>
 #include "protocol_binary.h"
 #include "config.h"
 
@@ -99,23 +101,36 @@ namespace mc
 
 		typedef std::unordered_map<key, item, hasher> hash;
 
-		cache(size_t maxmemsize);
+		cache(size_t maxmemsize, bool thread_safe);
 		~cache();
 
-		//may throw with strong exception safety guarantees
+		//may throw
 		void set(item v);
+		bool cas(item v, uint64_t cas);
 
-		const item* get(const key& k);
+		bool get_value(std::vector<unsigned char>& v, const key& k);
 	
 	private:
+		std::unique_ptr<std::mutex> m_;
+
 		size_t maxmemsize_;
 		size_t used_mem_;
 
 		hash h_;
 		lru lru_;
 
+		void do_set(item v);
+		bool do_cas(item v, uint64_t cas);
+
+		bool do_get_value(std::vector<unsigned char>& v, const key& k);
+		const item* do_get(const key& k);
+
 		void delete_item(key k);
 		void free_mem(size_t size);
+
+
+		cache(const cache&) = delete;
+		cache& operator=(cache&) = delete;
 	};
 
 }
