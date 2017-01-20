@@ -31,19 +31,61 @@ namespace mc //for memcache...
 		protocol_binary_request_header header_; //packet header
 		struct write_control
 		{
-			buffer buf_;
-			size_t pos_;
+			buffer hdr_;
+			size_t offset_;
+			std::shared_ptr<cache::item> item_;
+
 			write_control()
-				:pos_(0)
+				:offset_(0)
+				,pos_(0)
 			{}
-			bool is_active() const {
-				return pos_ < buf_.size();
+
+			std::pair<const unsigned char*, size_t> next() 
+			{
+				if (!hdr_.empty()) {
+					assert(pos_ < hdr_.size());
+					return std::make_pair(hdr_.data() + pos_, hdr_.size() - pos_);
+				}
+				assert(item_);
+				assert(item_->get_value_len() > pos_);
+				return std::make_pair(item_->get_value() + pos_, item_->get_value_len() - pos_);
 			}
+			void move(size_t cnt)
+			{
+				if (!hdr_.empty()) {
+					pos_ += cnt;
+					if (pos_ >= hdr_.size()) {
+						hdr_.clear();
+						pos_ = offset_;
+					}
+				}
+				else {
+					pos_ += cnt;
+				}
+			}
+
+			bool is_active() const
+			{
+				if (!item_) {
+					return !hdr_.empty() && pos_ < hdr_.size();
+				}
+				//header is active
+				if (!hdr_.empty() && pos_ < hdr_.size()) {
+					return true;
+				}
+				// item is active
+				return pos_ < item_->get_value_len();
+			}
+
 			void reset()
 			{
-				buf_.clear();
+				item_.reset();
 				pos_ = 0;
+				offset_ = 0;
 			}
+			
+		private:
+			size_t pos_;
 		};
 		write_control wctl_;
 

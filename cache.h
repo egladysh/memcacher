@@ -49,6 +49,7 @@ namespace mc
 		struct item
 		{
 			typedef std::vector<unsigned char> data;
+
 			data d_; 
 			protocol_binary_request_header h_;
 			lru::iterator lru_ref_; //location in LRU list (list iterators are valid till deleted)
@@ -57,7 +58,7 @@ namespace mc
 				:d_(std::move(d))
 				,h_(h)
 			{
-				assert(d.size() >= h_.request.extlen + sizeof(h_));
+				assert(d_.size() >= h_.request.extlen + sizeof(h_));
 			}
 			item(item&& v)
 				:d_(std::move(v.d_))
@@ -77,9 +78,17 @@ namespace mc
 			{
 				return d_.data() + h_.request.extlen + sizeof(h_);
 			}
+			const unsigned char* get_value() const
+			{
+				return get_data() + h_.request.keylen;
+			}
 			const size_t get_data_len() const
 			{
 				return d_.size() - h_.request.extlen - sizeof(h_);
+			}
+			const size_t get_value_len() const
+			{
+				return get_data_len() - h_.request.keylen;
 			}
 
 			void set_lru(lru::iterator it)
@@ -99,7 +108,7 @@ namespace mc
 			size_t operator()(const key& k) const;
 		};
 
-		typedef std::unordered_map<key, item, hasher> hash;
+		typedef std::unordered_map<key, std::shared_ptr<item>, hasher> hash;
 
 		cache(size_t maxmemsize, bool thread_safe);
 		~cache();
@@ -108,6 +117,7 @@ namespace mc
 		void set(item v);
 		bool cas(item v, uint64_t cas);
 
+		std::shared_ptr<item> get(const key& k);
 		bool get_value(std::vector<unsigned char>& v, const key& k);
 	
 	private:
@@ -123,7 +133,8 @@ namespace mc
 		bool do_cas(item v, uint64_t cas);
 
 		bool do_get_value(std::vector<unsigned char>& v, const key& k);
-		const item* do_get(const key& k);
+		std::shared_ptr<item> do_get_item(const key& k);
+		std::shared_ptr<item> do_get(const key& k);
 
 		void delete_item(key k);
 		void free_mem(size_t size);

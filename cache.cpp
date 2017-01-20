@@ -59,6 +59,17 @@ void cache::set(item v)
 	}
 }
 
+std::shared_ptr<cache::item> cache::get(const key& k)
+{
+	if (m_) {
+		std::unique_lock<std::mutex> lock(*m_);
+		return do_get(k);
+	}
+	else {
+		return do_get(k);
+	}
+}
+
 bool cache::get_value(std::vector<unsigned char>& v, const key& k)
 {
 	if (m_) {
@@ -73,7 +84,7 @@ bool cache::get_value(std::vector<unsigned char>& v, const key& k)
 bool cache::do_cas(item v, uint64_t cas)
 {
 	//handle cas
-	const cache::item* p = do_get(v.get_key());
+	std::shared_ptr<item> p = do_get(v.get_key());
 	if (p && p->h_.request.cas != cas) {
 		return false;
 	}
@@ -101,7 +112,8 @@ void cache::do_set(item v)
 	v.set_lru(lruit);
 
 	try {
-		h_.emplace(std::make_pair(k, std::move(v)));
+		std::shared_ptr<item> pi(new item(std::move(v)));
+		h_.emplace(std::make_pair(k, pi));
 	}
 	catch (const std::exception&)
 	{
@@ -113,7 +125,7 @@ void cache::do_set(item v)
 
 bool cache::do_get_value(std::vector<unsigned char>& v, const key& k)
 {
-	const item* p = do_get(k);
+	std::shared_ptr<item> p = do_get(k);
 	if (!p)
 		return false;
 	unsigned int value_len = p->get_data_len() - p->h_.request.keylen;
@@ -122,20 +134,20 @@ bool cache::do_get_value(std::vector<unsigned char>& v, const key& k)
 	return true;
 }
 
-const cache::item* cache::do_get(const key& k)
+std::shared_ptr<cache::item> cache::do_get(const key& k)
 {
 	auto it = h_.find(k);
 	if (it == h_.end())
-		return nullptr;
+		return std::shared_ptr<item>();
 
 	assert(!lru_.empty());
 
 	//refresh in the LRU list
-	if (it->second.lru_ref_ != --lru_.end()) {
-		lru_.splice(lru_.end(), lru_, it->second.lru_ref_);
+	if (it->second->lru_ref_ != --lru_.end()) {
+		lru_.splice(lru_.end(), lru_, it->second->lru_ref_);
 	}
 	
-	return &(it->second);
+	return it->second;
 }
 
 void cache::delete_item(key k) //pass by value
@@ -146,7 +158,7 @@ void cache::delete_item(key k) //pass by value
 	}
 
 	//remove from LRU
-	lru_.erase(it->second.lru_ref_);
+	lru_.erase(it->second->lru_ref_);
 
 	h_.erase(it);
 

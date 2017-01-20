@@ -164,31 +164,36 @@ bool session::handle_request_get()
 {
 	typedef uint32_t flag_t;
 
-	buffer resp;
-	//reserve space for header and flags
-	resp.resize(sizeof(header_) + sizeof(flag_t));
-
-	unsigned int val_len = 0;
+	std::shared_ptr<cache::item> itm;
 
 	{ //find item
 		cache::item req(std::move(request_), header_);
-		if (!c_.get_value(resp, req.get_key())) { //this will put the value at the end of 'resp'
+		itm = c_.get(req.get_key());
+		if (!itm) {
 			error_response(PROTOCOL_BINARY_RESPONSE_KEY_ENOENT);
 			return true;
 		}
-		val_len = resp.size() - sizeof(header_) - sizeof(flag_t);
 	}
+
+	wctl_.item_ = itm;
+	size_t value_len = itm->get_value_len();
 
 	{ //place header and flags
 		flag_t f = 0;
-		buffer hdr = make_response_header(header_, 0, sizeof(f), 0, val_len + sizeof(f));
-		hdr.reserve(sizeof(header_) + sizeof(f));
+
+		buffer hdr = make_response_header(header_, 0, sizeof(f), 0, value_len + sizeof(f));
 		hdr.insert(hdr.end(), (unsigned char*)&f, (unsigned char*)&f+sizeof(f));
-		std::copy(hdr.begin(), hdr.end(), resp.begin());
+		size_t first_packet_size = std::min(MAX_WRITE_SIZE, value_len);
+
+		const unsigned char *buf = itm->get_data() + itm->h_.request.keylen;
+		hdr.insert(hdr.end(), buf, buf + first_packet_size);
+
+		wctl_.hdr_.swap(hdr);
+		wctl_.offset_ = first_packet_size;
 	}
 
 	// write the response
-	if (!begin_write(std::move(resp))) {
+	if (!continue_write()) {
 		return false;
 	}
 
@@ -297,31 +302,34 @@ void session::error_response(protocol_binary_response_status err)
 	reset();
 }
 
-bool session::begin_write(buffer buf)
-{
-	assert(!wctl_.is_active());
-	if (buf.empty())
-		return true;
-
-	wctl_.buf_ = std::move(buf);
-	wctl_.pos_ = 0;
-	return continue_write();
-}
-
 bool session::continue_write()
 {
-	assert(wctl_.is_active());
+	if (!wctl_.is_active()) {
+		assert(false);
+		return false;
+	}
 
 	//write a chunk
-	size_t len = std::min(MAX_WRITE_SIZE, wctl_.buf_.size()-wctl_.pos_);
-	assert(len);
-	if (!socket_write(wctl_.buf_.data() + wctl_.pos_, len)) {
+	auto pnt = wctl_.next();
+	size_t len = std::min(MAX_WRITE_SIZE, pnt.second);
+	if (!len) {
 		wctl_.reset();
+		return true;
+	}
+
+	ssize_t cnt = ::write(fd_, pnt.first, len);
+	if (cnt == -1) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			std::cerr << "continue write error: fd=" << fd_ << " errno=" << errno << std::endl;
+			return false;
+		}
+	}
+	else if (!cnt) {
 		return false;
 	}
 
 	//move pointers
-	wctl_.pos_ += len;
+	wctl_.move(cnt);
 
 	if (!wctl_.is_active()) { //done writing
 		wctl_.reset();
@@ -332,7 +340,7 @@ bool session::continue_write()
 	//to other sessions handle stuff
 	mc::sysevent wrtctl(mc::sysevent::session, this);
 	buffer b = serialize_sysevent(wrtctl);
-	int cnt = ::write(ctl_pipe_, &b[0], b.size());
+	cnt = ::write(ctl_pipe_, &b[0], b.size());
 	assert(cnt != -1);
 	return true;
 }
