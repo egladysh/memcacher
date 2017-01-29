@@ -6,6 +6,8 @@
 
 namespace mc
 {
+	static const char VER[]="1.0";
+
 	static const size_t MAX_KEYLEN = 250;
 	static const size_t MAX_VALUELEN = 1024*1024;
 	static const size_t MAX_WRITE_SIZE = 4*1204;

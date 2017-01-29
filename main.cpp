@@ -16,6 +16,8 @@
 #include "pipe.h"
 
 
+extern int daemonize(int nochdir, int noclose);
+
 static const char* appname = 0;
 
 static bool is_event_error(const epoll_event& e)
@@ -31,7 +33,7 @@ static void accept_incoming_connections(int ctl_pipe, tcp::socket& s, tcp::epoll
 std::auto_ptr<mc::cache> g_cache;
 
 // this will listen for connections and push the incoming data chunks to mc::server for processing
-static void server_loop(tcp::socket& s, unsigned int maxevents, unsigned int threads)
+static void server_loop(tcp::socket& s, unsigned int maxevents, unsigned int threads, unsigned int max_connections)
 {
 	assert(maxevents);
 
@@ -208,13 +210,15 @@ static void accept_incoming_connections(int ctl_pipe, tcp::socket& s, tcp::epoll
 
 static void usage_help()
 {
-	std::cerr << "Usage: " << appname << "-l[IP] [-pPORT] [-tTHREADS] [-mCACHE_MEMORY_SIZE]" << std::endl
-		<< "  -l IP address of the listening socket" << std::endl
+	std::cerr << "Ver: " << mc::VER << " Usage: " << appname << "[options]" << std::endl
+        << "  -d run as a daemon" << std::endl
+		<< "  -l IP address of the listening socket, default 124.0.0.1" << std::endl
 		<< "  -p Port number, default is 11211" << std::endl
 		<< "  -t Number of threads, default is 1" << std::endl
 		<< "  -m Max cache memory (MB), default is 500" << std::endl
+		<< "  -c Max number of simultaneous connections, default is 1024" << std::endl
 		<< "Example:" << std::endl
-		<< " " << appname << " -p5000 -t2 -m100" << std::endl
+		<< " " << appname << " -p 5000 -t 2 -m 100" << std::endl
 		<< std::endl;
 }
 
@@ -245,7 +249,9 @@ int main(int argc, char* argv[])
 	unsigned int port = 11211; //default port
 	unsigned int threads = 1; //number threads
 	unsigned int cachemem = 500; //~max memory for the cache in MB
-	std::string ip = "";
+	unsigned int max_connections = 1024;
+	std::string ip = ""; //default 127.0.0.1
+	bool daemon_mode = false;
 
 	// parse command line
 	try {
@@ -257,22 +263,50 @@ int main(int argc, char* argv[])
 				throw std::runtime_error("bad command line");
 			}
 
+			if (arg[2]) {
+				throw std::runtime_error("bad command line");
+			}
+
 			switch (arg[1])
 			{
+				case 'd':
+					daemon_mode = true;
+					break;
 				case 'p': //parse port number
-					port = parse_number(arg+2);
+					if (i + 1 == argc) {
+						throw std::runtime_error("bad command line");
+					}
+					port = parse_number(argv[++i]);
 					break;
 				case 't': //parse working thread number
-					threads = parse_number(arg+2);
+					if (i + 1 == argc) {
+						throw std::runtime_error("bad command line");
+					}
+					threads = parse_number(argv[++i]);
+					break;
+				case 'c': //parse working thread number
+					if (i + 1 == argc) {
+						throw std::runtime_error("bad command line");
+					}
+					max_connections = parse_number(argv[++i]);
+					if (!max_connections) {
+						throw std::runtime_error("max connections must be positive number");
+					}
 					break;
 				case 'm': //parse cache size
-					cachemem = parse_number(arg+2);
+					if (i + 1 == argc) {
+						throw std::runtime_error("bad command line");
+					}
+					cachemem = parse_number(argv[++i]);
 					if (!cachemem) {
 						throw std::runtime_error("Bad cache memory size");
 					}
 					break;
 				case 'l': //parse listen IP
-					ip = std::string(arg+2);
+					if (i + 1 == argc) {
+						throw std::runtime_error("bad command line");
+					}
+					ip = std::string(argv[++i]);
 					break;
 				default:
 					throw std::runtime_error("unsupported option");
@@ -282,10 +316,20 @@ int main(int argc, char* argv[])
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
 		usage_help();
-		return -1;
+		return 1;
 	}
 
-	std::clog << "listen: " << ip << ":" << port << " threads:" << threads << " cachmem:" << cachemem << "MB" << std::endl;
+    if (daemon_mode) {
+        if (sigignore(SIGHUP) == -1) {
+            perror("Failed to ignore SIGHUP");
+        }
+        if (daemonize(0, 0) == -1) {
+			std::cerr << "failed to daemonize" << std::endl;
+			return 1;
+        }
+    }
+
+	std::clog << "ver: " << mc::VER << " listen: " << ip << ":" << port << " threads:" << threads << " cachmem:" << cachemem << "MB" << " connections:" << max_connections << std::endl;
 	
 	try {
 		//allocate cache
@@ -297,7 +341,7 @@ int main(int argc, char* argv[])
 		std::clog << "socket created..." << std::endl;
 
 		// run it
-		server_loop(s, mc::MAX_EPOLL_EVENTS, threads);
+		server_loop(s, mc::MAX_EPOLL_EVENTS, threads, max_connections);
 	}
 	catch (const std::exception& e) {
 		std::clog << e.what() << std::endl;
