@@ -5,7 +5,7 @@ Description=memcacher service (daemon)
 After=network.target
 
 [Service]
-ExecStart=/home/egladysh/git/build/memcacher
+ExecStart=~/git/build/memcacher
 
 [Install]
 WantedBy=default.target
