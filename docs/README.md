@@ -1,6 +1,6 @@
 # memcacher
 
-memcacher is a C++ a minimalistic implementation of [Memcache Binary Protocol](https://cloud.github.com/downloads/memcached/memcached/protocol-binary.txt). It is a work in progress. Set (with CAS) and Get commands are currently supported.
+memcacher is a C++ a minimalistic implementation of [Memcache Binary Protocol](https://cloud.github.com/downloads/memcached/memcached/protocol-binary.txt). Set (with CAS) and Get commands are currently supported.
 This project has a somewhat interesting history. It was submitted as my response to a coding exercise given to me by Slack.
 The implementation uses the C++11 move semantic heavily that minimizes the number of required data copying while keeping the code clean. The RAII idiom
 helps with a clean code as well as making it exception "safer". The cache uses LRU to reclaim memory when needed.
