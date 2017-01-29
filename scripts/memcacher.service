@@ -1,0 +1,11 @@
+# put it in /etc/systemd/system/
+# run $systemctl daemon-reload
+[Unit]
+Description=memcacher service (daemon)
+After=network.target
+
+[Service]
+ExecStart=/home/egladysh/git/build/memcacher
+
+[Install]
+WantedBy=default.target

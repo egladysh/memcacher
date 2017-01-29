@@ -30,7 +30,7 @@ typedef std::vector<server_ptr> servers;
 static void accept_incoming_connections(int ctl_pipe, tcp::socket& s, tcp::epoll& ep, mc::round_robin<servers>& server_pool);
 
 //global cache
-std::auto_ptr<mc::cache> g_cache;
+std::unique_ptr<mc::cache> g_cache;
 
 // this will listen for connections and push the incoming data chunks to mc::server for processing
 static void server_loop(tcp::socket& s, unsigned int maxevents, unsigned int threads, unsigned int max_connections)
