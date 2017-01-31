@@ -94,7 +94,6 @@ C++11 and a system that support kqueue (OSX, FreeBSD) or epoll (Linux). Actually
 
 * Remaining of the protocol
 * SASL authentication
-* Daemonize
 * Custom memory allocators
 * Support for socket files
 * Thread-safe logging
