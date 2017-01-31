@@ -7,8 +7,9 @@
 
 using namespace mc;
 
-server::server(bool thread)
-	:thread_(thread)
+server::server(size_t mc, bool thread)
+	:max_connections_(mc)
+	,thread_(thread)
 {
 }
 
@@ -28,6 +29,11 @@ void server::start()
 void server::register_session(session *s)
 {
 	assert(sessions_.find(s) == sessions_.end());
+	if (sessions_.size() >= max_connections_)
+	{
+		delete s;
+		return;
+	}
 	//mark session activity time, just in case we want to enforce an idle timeout later
 	sessions_[s] = std::time(NULL);
 }

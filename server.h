@@ -59,10 +59,11 @@ namespace mc
 
 		typedef safe_queue<data_chunk> queue;
 
+		size_t max_connections_;
 		queue q_;
 		bool thread_;
 
-		explicit server(bool enable_thread = true);
+		explicit server(size_t mc, bool enable_thread = true);
 		~server();
 
 		void start();

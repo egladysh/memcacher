@@ -68,6 +68,7 @@ C++11 and a system that support kqueue (OSX, FreeBSD) or epoll (Linux). Actually
 		-d run as daemon
 		-p Port number, default is 11211
 		-t Number of threads, default is 1 (just the main thread)
+		-c Max number of simultaneous connections, default is 1024
 		-m Max cache memory (MB), default is 500
 
 * Example: memcacher -p 5000 -t 2 -m 100

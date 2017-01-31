@@ -40,15 +40,16 @@ static void server_loop(tcp::socket& s, unsigned int maxevents, unsigned int thr
 	// create server pool
 	servers srvs;
 	if (threads > 1) {
+		size_t mcs = max_connections/threads + 1; //max connections per server
 		for (unsigned int i = 1; i != threads; ++i) {
 			// mc::server will do the actual job on its own thread
-			server_ptr p(new mc::server());
+			server_ptr p(new mc::server(mcs, true));
 			p->start();
 			srvs.push_back(p);
 		}
 	}
 	else {
-		server_ptr p(new mc::server(false));
+		server_ptr p(new mc::server(max_connections, false));
 		p->start();
 		srvs.push_back(p);
 	}
@@ -174,7 +175,7 @@ static void server_loop(tcp::socket& s, unsigned int maxevents, unsigned int thr
 					}
 					else {
 						assert(!count);
-						// tell the server that the session is to closed
+						// tell the server that the session is to be closed
 						static_cast<mc::server*>(ses->user_)->push(mc::server::data_chunk(mc::server::data_chunk::ctl_close, ses));
 						break;
 					}
