@@ -62,9 +62,10 @@ C++11 and a system that support kqueue (OSX, FreeBSD) or epoll (Linux). Actually
    - murmur3 hash, binary hasher.
 * Command line options.
 
-	memcacher [-lIP] [-pPORT] [-tTHREADS] [-mCACHE_MEMORY_SIZE]
+	memcacher [options]
 	
-		-l IP address of the listening socket
+		-l IP address of the listening socket, default 127.0.0.1
+		-d run as daemon
 		-p Port number, default is 11211
 		-t Number of threads, default is 1 (just the main thread)
 		-m Max cache memory (MB), default is 500
