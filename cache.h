@@ -116,6 +116,7 @@ namespace mc
 		//may throw
 		void set(item v);
 		bool cas(item v, uint64_t cas);
+		bool remove(const item& v, uint64_t cas);
 
 		std::shared_ptr<item> get(const key& k);
 		bool get_value(std::vector<unsigned char>& v, const key& k);
@@ -131,6 +132,7 @@ namespace mc
 
 		void do_set(item v);
 		bool do_cas(item v, uint64_t cas);
+		bool do_remove(const item& v, uint64_t cas);
 
 		bool do_get_value(std::vector<unsigned char>& v, const key& k);
 		std::shared_ptr<item> do_get_item(const key& k);

@@ -45,3 +45,18 @@ class MemcachedTests(unittest.TestCase):
         # still equal to old value
         self.assertEqual(self.client.get('test_key1'), 'test2')
 
+    def testCasDelete(self):
+        self.client = bmemcached.Client(self.server, 'user', 'password',
+                                        socket_timeout=None)
+
+        cas = 345
+        self.assertTrue(self.client.cas('test_key_del', 'test1', cas))
+        self.assertEqual(self.client.get('test_key_del'), 'test1')
+        
+        # If a different CAS value is supplied, the key is not deleted.
+        self.assertFalse(self.client.delete('test_key_del', cas=cas+1))
+        self.assertEqual('test1', self.client.get('test_key_del'))
+
+        # If the correct CAS value is supplied, the key is deleted.
+        self.assertTrue(self.client.delete('test_key_del', cas=cas))
+        self.assertEqual(None, self.client.get('test_key_del'))

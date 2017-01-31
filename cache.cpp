@@ -37,6 +37,17 @@ cache::~cache()
 {
 }
 
+bool cache::remove(const item& v, uint64_t cas)
+{
+	if (m_) {
+		std::unique_lock<std::mutex> lock(*m_);
+		return do_remove(v, cas);
+	}
+	else {
+		return do_remove(v, cas);
+	}
+}
+
 bool cache::cas(item v, uint64_t cas)
 {
 	if (m_) {
@@ -148,6 +159,23 @@ std::shared_ptr<cache::item> cache::do_get(const key& k)
 	}
 	
 	return it->second;
+}
+
+bool cache::do_remove(const item& v, uint64_t cas)
+{
+	try {
+		if (cas) {
+			//handle cas
+			std::shared_ptr<item> p = do_get(v.get_key());
+			if (p && p->h_.request.cas != cas) {
+				return false;
+			}
+		}
+		delete_item(v.get_key());
+	}
+	catch (const std::exception&) {
+	}
+	return true;
 }
 
 void cache::delete_item(key k) //pass by value

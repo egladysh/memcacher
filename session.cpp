@@ -132,6 +132,29 @@ bool session::process_chunk(buffer b)
 	return handle_request();
 }
 
+bool session::handle_request_delete()
+{
+	cache::item item(std::move(request_), header_);
+
+	try {
+		if (!c_.remove(item, header_.request.cas)) {
+			error_response(PROTOCOL_BINARY_RESPONSE_KEY_EEXISTS);
+			return true;
+		}
+
+		//generate response
+		buffer resp = make_response_header(header_, 0, 0, 0, 0);
+		if (!socket_write(resp.data(), resp.size())) {
+			return false;
+		}
+	}
+	catch(const std::exception& e) { //some system error
+		std::cerr << e.what() << std::endl;
+		return false; //log and disconnect
+	}
+	return true;
+}
+
 bool session::handle_request_set()
 {
 	cache::item item(std::move(request_), header_);
@@ -221,6 +244,9 @@ bool session::handle_request()
 		case PROTOCOL_BINARY_CMD_GET:
 			ret=handle_request_get();
 			break;
+		case PROTOCOL_BINARY_CMD_DELETE:
+			ret=handle_request_delete();
+			break;
 		default:
 			error_response(PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND);
 			break;
@@ -249,6 +275,15 @@ bool session::validate_request()
 			}
 			break;
 		case PROTOCOL_BINARY_CMD_GET:
+            if (header_.request.extlen != 0 
+					|| header_.request.keylen == 0 
+					|| header_.request.bodylen != header_.request.keylen
+				) {
+				error_response(PROTOCOL_BINARY_RESPONSE_EINVAL);
+				ok = false;
+			}
+			break;
+		case PROTOCOL_BINARY_CMD_DELETE:
             if (header_.request.extlen != 0 
 					|| header_.request.keylen == 0 
 					|| header_.request.bodylen != header_.request.keylen

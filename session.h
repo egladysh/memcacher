@@ -91,6 +91,7 @@ namespace mc //for memcache...
 
 		bool handle_request_set();
 		bool handle_request_get();
+		bool handle_request_delete();
 
 		bool handle_request();
 		bool validate_request();
