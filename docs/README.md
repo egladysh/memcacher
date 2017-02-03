@@ -4,8 +4,7 @@ memcacher is a C++ a minimalistic implementation of [Memcache Binary Protocol](h
 This project has a somewhat interesting history. It was submitted as my response to a coding exercise given to me by Slack.
 The implementation uses the C++11 move semantic heavily that minimizes the number of required data copying while keeping the code clean. The RAII idiom
 helps with a clean code as well as making it exception "safer". The cache uses LRU to reclaim memory when needed.
-The performance is comparable with the standard memcached, that is implemented in C and has custom memory allocations. I believe that building custom C++
-allocators would make memcacher as fast as memcached.
+The performance is comparable with the standard memcached that is implemented in C, and has customized memory allocators.
 
 ## Build
 
